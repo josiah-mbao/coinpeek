@@ -56,13 +56,15 @@ async fn run<B: ratatui::backend::Backend>(
     use crossterm::event::{self, Event, KeyCode};
     use std::time::{Duration, Instant};
 
+    let symbols = vec!["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT"];
+    let mut prices = binance::fetch_prices(&symbols).await;
+
     let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_secs(10);
-    let mut price = binance::fetch_price("BTCUSDT").await?;
+    let tick_rate = Duration::from_secs(2);
 
     loop {
         terminal.draw(|f| {
-            let size = f.area(); // ✅ replaces deprecated f.size()
+            let size = f.area();
 
             let block = Block::default()
                 .title("🚀 CoinPeek")
@@ -71,19 +73,24 @@ async fn run<B: ratatui::backend::Backend>(
             let layout = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(2)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Min(0),
-                ])
+                .constraints(
+                    std::iter::repeat(Constraint::Length(1))
+                        .take(prices.len())
+                        .collect::<Vec<_>>(),
+                )
                 .split(size);
 
-            let price_text = Paragraph::new(Text::from(Line::from(vec![
-                Span::raw("BTC/USDT: "),
-                Span::styled(format!("${:.2}", price), Style::default().bold()),
-            ])));
+            for (i, (symbol, price)) in prices.iter().enumerate() {
+                let price_line = Line::from(vec![
+                    Span::raw(format!("{:<8}: ", symbol)),
+                    Span::styled(format!("${:.2}", price), Style::default().bold()),
+                ]);
+
+                let widget = Paragraph::new(Text::from(price_line));
+                f.render_widget(widget, layout[i]);
+            }
 
             f.render_widget(block, size);
-            f.render_widget(price_text, layout[0]);
         })?;
 
         let timeout = Duration::from_millis(200);
@@ -97,10 +104,7 @@ async fn run<B: ratatui::backend::Backend>(
         }
 
         if last_tick.elapsed() >= tick_rate {
-            let new_price = binance::fetch_price("BTCUSDT").await?;
-            if (new_price - price).abs() > 0.1 {
-                price = new_price;
-            }
+            prices = binance::fetch_prices(&symbols).await;
             last_tick = Instant::now();
         }
     }
