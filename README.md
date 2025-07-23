@@ -1,22 +1,16 @@
 # 🪙 CoinPeek
 
+![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange?logo=rust)
+![License](https://img.shields.io/github/license/josiah-mbao/coinpeek?color=blue)
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![Refresh](https://img.shields.io/badge/refresh_interval-5s-blue)
+![Binance API](https://img.shields.io/badge/API-Binance-yellow)
+
 **CoinPeek** is a Rust-powered terminal application that displays real-time cryptocurrency prices using the Binance API. Built for speed and clarity, it turns your terminal into a sleek, auto-refreshing crypto dashboard.
 
 https://github.com/user-attachments/assets/c9482e47-3cd4-48e5-a68a-ed6d07345ee0
 
 > ⚡ Fast. 🔁 Real-time. 🖥️ Terminal-native.
-
-<p align="center">
-  <a href="https://github.com/josiah-mbao/coinpeek/releases">
-    <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version">
-  </a>
-  <a href="https://www.rust-lang.org">
-    <img src="https://img.shields.io/badge/Rust-1.70+-orange.svg" alt="Rust Version">
-  </a>
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License">
-  </a>
-</p>
 
 ---
 
