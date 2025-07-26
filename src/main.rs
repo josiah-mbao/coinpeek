@@ -65,32 +65,7 @@ async fn run<B: ratatui::backend::Backend>(
     loop {
         terminal.draw(|f| {
             let size = f.area();
-
-            let block = Block::default()
-                .title("🚀 CoinPeek")
-                .borders(Borders::ALL);
-
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(2)
-                .constraints(
-                    std::iter::repeat(Constraint::Length(1))
-                        .take(prices.len())
-                        .collect::<Vec<_>>(),
-                )
-                .split(size);
-
-            for (i, (symbol, price)) in prices.iter().enumerate() {
-                let price_line = Line::from(vec![
-                    Span::raw(format!("{:<8}: ", symbol)),
-                    Span::styled(format!("${:.2}", price), Style::default().bold()),
-                ]);
-
-                let widget = Paragraph::new(Text::from(price_line));
-                f.render_widget(widget, layout[i]);
-            }
-
-            f.render_widget(block, size);
+            ui::render_dashboard(f, size, &prices);
         })?;
 
         let timeout = Duration::from_millis(200);
