@@ -7,7 +7,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use std::collections::HashMap;
 
 /// Draws the main crypto dashboard UI
 pub fn render_dashboard(
