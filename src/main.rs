@@ -20,6 +20,12 @@ use std::time::{Duration, Instant};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // temporary sanity test
+    let candles = binance::fetch_candles("BTCUSDT", "1m", 10).await?;
+    for (i, c) in candles.iter().enumerate() {
+        println!("{}: Open:{:.2} High:{:.2} Low:{:.2} Close:{:.2}", i, c.open, c.high, c.low, c.close);
+    }
+
     let mut terminal = init_terminal()?;
     let result = run_loop(&mut terminal).await;
     cleanup_terminal(&mut terminal)?;
@@ -67,8 +73,8 @@ async fn run_loop<B: ratatui::backend::Backend>(
 
     loop {
         terminal.draw(|f| {
-            let size = f.size();
-            ui::render_dashboard(f, size, &prices);
+            let size = f.area();
+            ui::render_dashboard(f, size, prices.as_ref().unwrap_or(&vec![]));
         })?;
 
         if event::poll(Duration::from_millis(200))? {
