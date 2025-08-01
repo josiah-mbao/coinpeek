@@ -6,28 +6,45 @@ mod ui;
 mod utils;
 
 use std::error::Error;
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
 use std::io;
+
+use crossterm::event::{EnableMouseCapture, DisableMouseCapture};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 use std::time::{Duration, Instant};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Setup terminal
+    let mut terminal = init_terminal()?;
+    let result = run_loop(&mut terminal).await;
+    cleanup_terminal(&mut terminal)?;
+
+    if let Err(err) = result {
+        eprintln!("Error: {}", err);
+    }
+
+    Ok(())
+}
+
+/// Initializes the terminal in raw mode with alternate screen and mouse capture
+fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal = Terminal::new(backend)?;
+    Ok(terminal)
+}
 
-    let res = run(&mut terminal).await;
-
-    // Restore terminal
+/// Restores the terminal to normal mode
+fn cleanup_terminal(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+) -> Result<(), Box<dyn Error>> {
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
@@ -35,27 +52,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        eprintln!("Error: {}", err);
-    }
-
     Ok(())
 }
 
-async fn run<B: ratatui::backend::Backend>(
+/// Main application loop
+async fn run_loop<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use ratatui::{
-        layout::{Constraint, Direction, Layout},
-        style::{Style, Stylize},
-        text::{Span, Line, Text},
-        widgets::{Block, Borders, Paragraph},
-    };
-
-    use crossterm::event::{self, Event, KeyCode};
-    use std::time::{Duration, Instant};
-
+) -> Result<(), Box<dyn Error>> {
     let symbols = vec!["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT"];
     let mut prices = binance::fetch_prices(&symbols).await;
 
@@ -64,15 +67,13 @@ async fn run<B: ratatui::backend::Backend>(
 
     loop {
         terminal.draw(|f| {
-            let size = f.area();
+            let size = f.size();
             ui::render_dashboard(f, size, &prices);
         })?;
 
-        let timeout = Duration::from_millis(200);
-
-        if event::poll(timeout)? {
+        if event::poll(Duration::from_millis(200))? {
             if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') {
+                if let KeyCode::Char('q') = key.code {
                     break;
                 }
             }
