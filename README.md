@@ -8,9 +8,11 @@
 
 **CoinPeek** is a Rust-powered terminal application that displays real-time cryptocurrency prices using the Binance API. Built for speed and clarity, it turns your terminal into a sleek, auto-refreshing crypto dashboard.
 
-https://github.com/user-attachments/assets/c9482e47-3cd4-48e5-a68a-ed6d07345ee0
 
-> ⚡ Fast. 🔁 Real-time. 🖥️ Terminal-native.
+![coinpeek_demo](https://github.com/user-attachments/assets/d075dee7-08ec-4265-88f8-574b751b81aa)
+
+
+ ⚡ Fast. 🔁 Real-time. 🖥️ Terminal-native.
 
 ---
 
