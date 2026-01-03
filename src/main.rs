@@ -89,7 +89,10 @@ async fn run_loop<B: ratatui::backend::Backend>(
     if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
         // Store in database
         db.store_price_infos(&price_infos).await?;
+        app.record_successful_sync();
         app.update_prices(price_infos);
+    } else {
+        app.record_sync_failure();
     }
 
     let mut last_tick = Instant::now();
@@ -103,12 +106,23 @@ async fn run_loop<B: ratatui::backend::Backend>(
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
+                // If help is showing, any key closes it
+                if app.show_help {
+                    app.toggle_help();
+                    continue;
+                }
+
                 match key.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Up => app.select_previous(),
                     KeyCode::Down => app.select_next(),
                     KeyCode::Char('s') => app.next_sort_mode(),
+                    KeyCode::Char('d') => app.toggle_sort_direction(),
+                    KeyCode::Char('f') => app.next_filter_preset(),
+                    KeyCode::Char('c') => app.clear_all_filters(),
+                    KeyCode::Char('o') => app.toggle_offline_mode(),
                     KeyCode::Char('p') => app.toggle_pause(),
+                    KeyCode::Char('?') => app.toggle_help(),
                     KeyCode::Char('r') => {
                         // Manual refresh
                         if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
@@ -116,7 +130,10 @@ async fn run_loop<B: ratatui::backend::Backend>(
                             if let Err(e) = db.store_price_infos(&price_infos).await {
                                 eprintln!("Failed to store prices: {}", e);
                             }
+                            app.record_successful_sync();
                             app.update_prices(price_infos);
+                        } else {
+                            app.record_sync_failure();
                         }
                     }
                     _ => {}
@@ -130,7 +147,10 @@ async fn run_loop<B: ratatui::backend::Backend>(
                 if let Err(e) = db.store_price_infos(&price_infos).await {
                     eprintln!("Failed to store prices: {}", e);
                 }
+                app.record_successful_sync();
                 app.update_prices(price_infos);
+            } else {
+                app.record_sync_failure();
             }
             last_tick = Instant::now();
         }

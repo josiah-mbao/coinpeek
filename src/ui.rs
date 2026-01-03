@@ -16,6 +16,12 @@ pub fn render_dashboard(
     area: Rect,
     app: &App,
 ) {
+    // If help is active, show only the help screen (clear the dashboard)
+    if app.show_help {
+        render_help_screen(f, area);
+        return;
+    }
+
     let main_block = Block::default()
         .title("🚀 CoinPeek")
         .borders(Borders::ALL);
@@ -41,8 +47,17 @@ pub fn render_dashboard(
 }
 
 fn render_crypto_list(f: &mut Frame, area: Rect, app: &App) {
+    // Create title with sort, filter, and sync status info
+    let sort_info = app.sort_config.display_name();
+    let filter_info = app.get_filter_status();
+    let (visible, total) = app.get_visible_count();
+    let sync_status = app.get_offline_indicator();
+
+    let title = format!("📊 Cryptocurrency Prices | {} | {} | {}/{} coins | {}",
+                       sort_info, filter_info, visible, total, sync_status);
+
     let list_block = Block::default()
-        .title("📊 Cryptocurrency Prices")
+        .title(title)
         .borders(Borders::ALL);
 
     f.render_widget(list_block.clone(), area);
@@ -282,4 +297,129 @@ fn render_crypto_details(f: &mut Frame, area: Rect, app: &App) {
         let no_selection_widget = Paragraph::new(no_selection_text);
         f.render_widget(no_selection_widget, details_area);
     }
+}
+
+fn render_help_screen(f: &mut Frame, area: Rect) {
+    // Render background overlay first (makes it opaque)
+    let background = Block::default()
+        .style(Style::default().bg(Color::Black));
+    f.render_widget(background, area);
+
+    // Create a centered help popup
+    let popup_width = 60;
+    let popup_height = 20;
+
+    let x = (area.width.saturating_sub(popup_width)) / 2;
+    let y = (area.height.saturating_sub(popup_height)) / 2;
+
+    let popup_area = Rect {
+        x,
+        y,
+        width: popup_width.min(area.width),
+        height: popup_height.min(area.height),
+    };
+
+    let help_block = Block::default()
+        .title("🎯 CoinPeek Help")
+        .title_style(Style::default().fg(Color::Cyan).bold())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::White))
+        .style(Style::default().bg(Color::Black));
+
+    f.render_widget(help_block.clone(), popup_area);
+
+    let help_area = help_block.inner(popup_area);
+
+    let help_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(2), // Navigation
+            Constraint::Length(2), // Sorting
+            Constraint::Length(2), // Filtering
+            Constraint::Length(2), // Data & Offline
+            Constraint::Length(2), // General
+            Constraint::Length(2), // Footer
+        ])
+        .split(help_area);
+
+    // Navigation section
+    let nav_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("Navigation:", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" ↑/↓ Select | "),
+            Span::styled("?", Style::default().fg(Color::Cyan)),
+            Span::raw(" Toggle help"),
+        ]),
+    ]);
+    let nav_widget = Paragraph::new(nav_text);
+    f.render_widget(nav_widget, help_layout[0]);
+
+    // Sorting section
+    let sort_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("Sorting:", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" "),
+            Span::styled("s", Style::default().fg(Color::Green)),
+            Span::raw(" Cycle mode | "),
+            Span::styled("d", Style::default().fg(Color::Green)),
+            Span::raw(" Toggle direction"),
+        ]),
+    ]);
+    let sort_widget = Paragraph::new(sort_text);
+    f.render_widget(sort_widget, help_layout[1]);
+
+    // Filtering section
+    let filter_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("Filtering:", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" "),
+            Span::styled("f", Style::default().fg(Color::Green)),
+            Span::raw(" Cycle presets | "),
+            Span::styled("c", Style::default().fg(Color::Green)),
+            Span::raw(" Clear filters"),
+        ]),
+    ]);
+    let filter_widget = Paragraph::new(filter_text);
+    f.render_widget(filter_widget, help_layout[2]);
+
+    // Data & Offline section
+    let data_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("Data:", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" "),
+            Span::styled("r", Style::default().fg(Color::Blue)),
+            Span::raw(" Refresh | "),
+            Span::styled("o", Style::default().fg(Color::Blue)),
+            Span::raw(" Toggle offline | "),
+            Span::styled("p", Style::default().fg(Color::Blue)),
+            Span::raw(" Pause/resume"),
+        ]),
+    ]);
+    let data_widget = Paragraph::new(data_text);
+    f.render_widget(data_widget, help_layout[3]);
+
+    // General section
+    let general_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("General:", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" "),
+            Span::styled("q", Style::default().fg(Color::Red)),
+            Span::raw(" Quit | "),
+            Span::styled("Ctrl+C", Style::default().fg(Color::Red)),
+            Span::raw(" Force quit"),
+        ]),
+    ]);
+    let general_widget = Paragraph::new(general_text);
+    f.render_widget(general_widget, help_layout[4]);
+
+    // Footer
+    let footer_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("💡 Tip:", Style::default().fg(Color::Gray)),
+            Span::raw(" Press any key to close help"),
+        ]),
+    ]);
+    let footer_widget = Paragraph::new(footer_text);
+    f.render_widget(footer_widget, help_layout[5]);
 }

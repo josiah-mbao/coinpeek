@@ -30,7 +30,14 @@
 - 🔧 **Configuration Management** - JSON-based config with hot-reload capability
 - 🛡️ **Error Resilience** - Graceful handling of network failures and API issues
 - 📊 **Performance Monitoring** - Database statistics and health metrics
-- 🔄 **Offline Capability** - Cached data loading for offline operation
+- 🔄 **Offline Capability** - Full offline operation with data freshness indicators
+
+### **Offline Awareness**
+- 🟢 **🟢 Online Mode** - Real-time sync with green status indicator
+- 🟡 **🟡 Degraded Mode** - Network issues with yellow warning
+- 🔴 **🔴 Offline Mode** - Manual offline toggle with red indicator
+- 📊 **Data Age Display** - Shows "2m ago", "1h ago", etc.
+- 💾 **Persistent Cache** - 30 days price data, 90 days candle data
 
 ---
 
@@ -239,10 +246,24 @@ cargo build --release
 ```
 
 **Keyboard Controls**:
-- `↑/↓` or `k/j` — Navigate between cryptocurrencies
-- `s/p/c/v` — Sort by Symbol/Price/Change/Volume
-- `Space` — Pause/unpause updates
+
+**Navigation:**
+- `↑/↓` — Navigate between cryptocurrencies
+- `?` — Show help screen
 - `q` or `Ctrl+C` — Quit
+
+**Sorting:**
+- `s` — Cycle sort mode (Symbol → Price → Change % → Volume)
+- `d` — Toggle sort direction (↑ Ascending ↔ ↓ Descending)
+
+**Filtering:**
+- `f` — Cycle filter presets (All → Top Gainers → Top Losers → High Volume → Volatile → Stable)
+- `c` — Clear all filters and presets
+
+**Data & Offline Mode:**
+- `r` — Manual refresh
+- `o` — Toggle offline mode (🟢 online ↔ 🔴 offline)
+- `p` — Toggle pause/resume
 
 ---
 
