@@ -160,6 +160,18 @@ async fn run_loop<B: ratatui::backend::Backend>(
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
+                // Handle search mode input
+                if app.search_mode {
+                    match key.code {
+                        KeyCode::Esc => app.exit_search_mode(),
+                        KeyCode::Backspace => app.backspace_search(),
+                        KeyCode::Enter => app.exit_search_mode(),
+                        KeyCode::Char(c) => app.update_search_query(c),
+                        _ => {} // Ignore other keys in search mode
+                    }
+                    continue;
+                }
+
                 // If help is showing, any key closes it
                 if app.show_help {
                     app.toggle_help();
@@ -176,6 +188,7 @@ async fn run_loop<B: ratatui::backend::Backend>(
                     KeyCode::Char('c') => app.clear_all_filters(),
                     KeyCode::Char('o') => app.toggle_offline_mode(),
                     KeyCode::Char('p') => app.toggle_pause(),
+                    KeyCode::Char('/') => app.enter_search_mode(),
                     KeyCode::Char('?') => app.toggle_help(),
                     KeyCode::Char('r') => {
                         // Manual refresh

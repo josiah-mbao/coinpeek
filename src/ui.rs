@@ -53,8 +53,14 @@ fn render_crypto_list(f: &mut Frame, area: Rect, app: &App) {
     let (visible, total) = app.get_visible_count();
     let sync_status = app.get_offline_indicator();
 
-    let title = format!("📊 Cryptocurrency Prices | {} | {} | {}/{} coins | {}",
-                       sort_info, filter_info, visible, total, sync_status);
+    let base_title = format!("📊 Cryptocurrency Prices | {} | {} | {}/{} coins | {}",
+                           sort_info, filter_info, visible, total, sync_status);
+
+    let title = if app.search_mode {
+        format!("🔍 Search: \"{}\" | {}", app.search_query, base_title)
+    } else {
+        base_title
+    };
 
     let list_block = Block::default()
         .title(title)
@@ -348,8 +354,17 @@ fn render_help_screen(f: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("Navigation:", Style::default().fg(Color::Yellow).bold()),
             Span::raw(" ↑/↓ Select | "),
+            Span::styled("Mouse", Style::default().fg(Color::Magenta)),
+            Span::raw(" Click to select"),
+        ]),
+        Line::from(vec![
+            Span::raw("Search: "),
+            Span::styled("/", Style::default().fg(Color::Green)),
+            Span::raw(" Search mode | "),
+            Span::styled("Esc", Style::default().fg(Color::Red)),
+            Span::raw(" Exit search | "),
             Span::styled("?", Style::default().fg(Color::Cyan)),
-            Span::raw(" Toggle help"),
+            Span::raw(" Help"),
         ]),
     ]);
     let nav_widget = Paragraph::new(nav_text);

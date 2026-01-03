@@ -138,6 +138,8 @@ pub struct App {
     pub selected_symbol_candles: String, // Track which symbol's candles we have
     pub data_status: DataStatus,         // Track data freshness and offline status
     pub show_help: bool,                 // Show help overlay
+    pub search_mode: bool,               // Interactive search mode
+    pub search_query: String,            // Current search query
 }
 
 impl App {
@@ -160,6 +162,8 @@ impl App {
                 consecutive_failures: 0,
             },
             show_help: false,
+            search_mode: false,
+            search_query: String::new(),
         }
     }
 
@@ -327,6 +331,49 @@ impl App {
 
     pub fn toggle_help(&mut self) {
         self.show_help = !self.show_help;
+    }
+
+    pub fn enter_search_mode(&mut self) {
+        self.search_mode = true;
+        self.search_query.clear();
+        // Clear any existing symbol search filters when entering search mode
+        self.active_filters.retain(|f| !matches!(f, FilterType::SymbolSearch(_)));
+    }
+
+    pub fn exit_search_mode(&mut self) {
+        self.search_mode = false;
+        self.search_query.clear();
+        // Clear search filter when exiting
+        self.active_filters.retain(|f| !matches!(f, FilterType::SymbolSearch(_)));
+        self.apply_filters_and_sorting();
+    }
+
+    pub fn update_search_query(&mut self, c: char) {
+        self.search_query.push(c);
+        self.apply_search_filter();
+    }
+
+    pub fn backspace_search(&mut self) {
+        self.search_query.pop();
+        self.apply_search_filter();
+    }
+
+    fn apply_search_filter(&mut self) {
+        // Remove any existing symbol search filters
+        self.active_filters.retain(|f| !matches!(f, FilterType::SymbolSearch(_)));
+
+        if !self.search_query.is_empty() {
+            // Add new search filter
+            self.active_filters.push(FilterType::SymbolSearch(self.search_query.clone()));
+        }
+
+        // Re-apply all filters and sorting
+        self.apply_filters_and_sorting();
+
+        // Reset selection if it's now out of bounds
+        if self.selected_index >= self.price_infos.len() && !self.price_infos.is_empty() {
+            self.selected_index = 0;
+        }
     }
 
     pub fn get_selected_symbol(&self) -> Option<&PriceInfo> {

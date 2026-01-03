@@ -253,6 +253,12 @@ cargo build --release
 - `?` — Show help screen
 - `q` or `Ctrl+C` — Quit
 
+**Search:**
+- `/` — Enter real-time search mode
+- `Esc` or `Enter` — Exit search mode
+- `Backspace` — Remove last character
+- Type to filter cryptocurrencies instantly
+
 **Sorting:**
 - `s` — Cycle sort mode (Symbol → Price → Change % → Volume)
 - `d` — Toggle sort direction (↑ Ascending ↔ ↓ Descending)
