@@ -60,6 +60,27 @@ pub enum FilterType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum AlertCondition {
+    PriceAbove(f64),        // Alert when price > threshold
+    PriceBelow(f64),        // Alert when price < threshold
+    PercentChangeAbove(f64), // Alert when % change > threshold (positive)
+    PercentChangeBelow(f64), // Alert when % change < threshold (negative)
+    VolumeSpike(f64),       // Alert when volume > threshold
+}
+
+#[derive(Debug, Clone)]
+pub struct PriceAlert {
+    pub id: u32,
+    pub symbol: String,
+    pub condition: AlertCondition,
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub last_triggered: Option<DateTime<Utc>>,
+    pub trigger_count: u32,
+    pub message: Option<String>, // Custom alert message
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum FilterPreset {
     All,                    // No filters
     TopGainers,            // > 5% up in 24h
@@ -168,7 +189,10 @@ pub struct App {
     pub show_help: bool,                 // Show help overlay
     pub search_mode: bool,               // Interactive search mode
     pub search_query: String,            // Current search query
+    pub show_alert_management: bool,     // Show alert management screen
     pub errors: Vec<AppError>,           // Active application errors
+    pub alerts: Vec<PriceAlert>,         // Price alerts
+    pub recent_alerts: Vec<(String, DateTime<Utc>)>, // Recently triggered alerts (message, timestamp)
 }
 
 impl App {
@@ -193,13 +217,19 @@ impl App {
             show_help: false,
             search_mode: false,
             search_query: String::new(),
+            show_alert_management: false,
             errors: Vec::new(),
+            alerts: Vec::new(),
+            recent_alerts: Vec::new(),
         }
     }
 
     pub fn update_prices(&mut self, price_infos: Vec<PriceInfo>) {
         // Store all price data
         self.all_price_infos = price_infos;
+
+        // Check alerts against new price data
+        self.check_alerts();
 
         // Apply filters and sorting
         self.apply_filters_and_sorting();
@@ -675,6 +705,119 @@ impl App {
             details,
             Some("Check coinpeek.json configuration file".to_string()),
         );
+    }
+
+    // Alert management methods
+    pub fn create_alert(&mut self, symbol: String, condition: AlertCondition, message: Option<String>) -> u32 {
+        let id = self.alerts.len() as u32 + 1;
+        let alert = PriceAlert {
+            id,
+            symbol,
+            condition,
+            enabled: true,
+            created_at: Utc::now(),
+            last_triggered: None,
+            trigger_count: 0,
+            message,
+        };
+        self.alerts.push(alert);
+        id
+    }
+
+    pub fn delete_alert(&mut self, id: u32) -> bool {
+        let initial_len = self.alerts.len();
+        self.alerts.retain(|alert| alert.id != id);
+        self.alerts.len() < initial_len
+    }
+
+    pub fn toggle_alert(&mut self, id: u32) -> bool {
+        if let Some(alert) = self.alerts.iter_mut().find(|a| a.id == id) {
+            alert.enabled = !alert.enabled;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn check_alerts(&mut self) {
+        for alert in &mut self.alerts {
+            if !alert.enabled {
+                continue;
+            }
+
+            // Find the price info for this symbol
+            if let Some(price_info) = self.all_price_infos.iter().find(|p| p.symbol == alert.symbol) {
+                let should_trigger = match &alert.condition {
+                    AlertCondition::PriceAbove(threshold) => price_info.price > *threshold,
+                    AlertCondition::PriceBelow(threshold) => price_info.price < *threshold,
+                    AlertCondition::PercentChangeAbove(threshold) => price_info.price_change_percent > *threshold,
+                    AlertCondition::PercentChangeBelow(threshold) => price_info.price_change_percent < *threshold,
+                    AlertCondition::VolumeSpike(threshold) => price_info.volume > *threshold,
+                };
+
+                if should_trigger {
+                    // Check if we've already triggered this alert recently (avoid spam)
+                    let should_notify = match alert.last_triggered {
+                        Some(last_trigger) => {
+                            let now = Utc::now();
+                            let duration = now.signed_duration_since(last_trigger);
+                            // Only trigger once per hour for the same alert
+                            duration.num_hours() >= 1
+                        }
+                        None => true, // Never triggered before
+                    };
+
+                    if should_notify {
+                        alert.last_triggered = Some(Utc::now());
+                        alert.trigger_count += 1;
+
+                        // Create notification message
+                        let message = alert.message.clone().unwrap_or_else(|| {
+                            match &alert.condition {
+                                AlertCondition::PriceAbove(threshold) => {
+                                    format!("{} price above ${:.2} (currently ${:.2})", alert.symbol, threshold, price_info.price)
+                                }
+                                AlertCondition::PriceBelow(threshold) => {
+                                    format!("{} price below ${:.2} (currently ${:.2})", alert.symbol, threshold, price_info.price)
+                                }
+                                AlertCondition::PercentChangeAbove(threshold) => {
+                                    format!("{} up {:.1}% (currently {:.2}%)", alert.symbol, threshold, price_info.price_change_percent)
+                                }
+                                AlertCondition::PercentChangeBelow(threshold) => {
+                                    format!("{} down {:.1}% (currently {:.2}%)", alert.symbol, threshold, price_info.price_change_percent)
+                                }
+                                AlertCondition::VolumeSpike(threshold) => {
+                                    format!("{} volume spike: {:.0} (threshold: {:.0})", alert.symbol, price_info.volume, threshold)
+                                }
+                            }
+                        });
+
+                        // Terminal bell notification
+                        print!("\x07"); // ASCII bell character
+
+                        // Add to recent alerts for notification
+                        self.recent_alerts.push((format!("🔔 {}", message), Utc::now()));
+
+                        // Keep only the last 10 recent alerts
+                        if self.recent_alerts.len() > 10 {
+                            self.recent_alerts.remove(0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn get_enabled_alert_count(&self) -> usize {
+        self.alerts.iter().filter(|a| a.enabled).count()
+    }
+
+    pub fn get_recent_alerts(&self) -> &[(String, DateTime<Utc>)] {
+        &self.recent_alerts
+    }
+
+    pub fn clear_recent_alerts(&mut self) {
+        self.recent_alerts.clear();
     }
 }
 

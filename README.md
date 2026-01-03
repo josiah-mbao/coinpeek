@@ -259,6 +259,12 @@ cargo build --release
 - `Backspace` — Remove last character
 - Type to filter cryptocurrencies instantly
 
+**Alerts:**
+- `Ctrl+A` — Open alert management screen
+- Set price thresholds and get notified
+- Terminal bell + visual notifications
+- Monitor multiple cryptocurrencies
+
 **Sorting:**
 - `s` — Cycle sort mode (Symbol → Price → Change % → Volume)
 - `d` — Toggle sort direction (↑ Ascending ↔ ↓ Descending)

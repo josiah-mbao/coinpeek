@@ -139,6 +139,11 @@ async fn run_loop<B: ratatui::backend::Backend>(
         app.update_prices(cached_prices);
     }
 
+    // Create some sample alerts for demonstration
+    app.create_alert("BTCUSDT".to_string(), crate::app::AlertCondition::PriceAbove(55000.0), Some("BTC breaking resistance!".to_string()));
+    app.create_alert("ETHUSDT".to_string(), crate::app::AlertCondition::PercentChangeAbove(5.0), Some("ETH pumping!".to_string()));
+    app.create_alert("ADAUSDT".to_string(), crate::app::AlertCondition::PriceBelow(0.4), Some("ADA dip opportunity".to_string()));
+
     // Initial API fetch for fresh data
     if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
         // Store in database
@@ -181,6 +186,15 @@ async fn run_loop<B: ratatui::backend::Backend>(
                     continue;
                 }
 
+                // Handle alert management mode
+                if app.show_alert_management {
+                    match key.code {
+                        KeyCode::Esc => app.show_alert_management = false,
+                        _ => {} // Ignore other keys in alert management mode for now
+                    }
+                    continue;
+                }
+
                 // If help is showing, any key closes it
                 if app.show_help {
                     app.toggle_help();
@@ -198,6 +212,10 @@ async fn run_loop<B: ratatui::backend::Backend>(
                     KeyCode::Char('o') => app.toggle_offline_mode(),
                     KeyCode::Char('p') => app.toggle_pause(),
                     KeyCode::Char('/') => app.enter_search_mode(),
+                    KeyCode::Char('a') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                        // Ctrl+A for alert management
+                        app.show_alert_management = !app.show_alert_management;
+                    }
                     KeyCode::Char('?') => app.toggle_help(),
                     KeyCode::Char('r') => {
                         // Manual refresh

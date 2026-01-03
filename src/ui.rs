@@ -16,6 +16,12 @@ pub fn render_dashboard(
     area: Rect,
     app: &App,
 ) {
+    // If alert management is active, show only the alert screen
+    if app.show_alert_management {
+        render_alert_management(f, area, app);
+        return;
+    }
+
     // If help is active, show only the help screen (clear the dashboard)
     if app.show_help {
         render_help_screen(f, area);
@@ -368,10 +374,14 @@ fn render_help_screen(f: &mut Frame, area: Rect) {
             Span::raw("Search: "),
             Span::styled("/", Style::default().fg(Color::Green)),
             Span::raw(" Search mode | "),
-            Span::styled("Esc", Style::default().fg(Color::Red)),
-            Span::raw(" Exit search | "),
+            Span::styled("Ctrl+A", Style::default().fg(Color::Green)),
+            Span::raw(" Alert management"),
+        ]),
+        Line::from(vec![
             Span::styled("?", Style::default().fg(Color::Cyan)),
-            Span::raw(" Help"),
+            Span::raw(" Help | "),
+            Span::styled("Esc", Style::default().fg(Color::Red)),
+            Span::raw(" Exit modes"),
         ]),
     ]);
     let nav_widget = Paragraph::new(nav_text);
@@ -444,4 +454,138 @@ fn render_help_screen(f: &mut Frame, area: Rect) {
     ]);
     let footer_widget = Paragraph::new(footer_text);
     f.render_widget(footer_widget, help_layout[5]);
+}
+
+fn render_alert_management(f: &mut Frame, area: Rect, app: &App) {
+    // Render background overlay first (makes it opaque)
+    let background = Block::default()
+        .style(Style::default().bg(Color::Black));
+    f.render_widget(background, area);
+
+    // Create a centered alert management popup
+    let popup_width = 80;
+    let popup_height = 25;
+
+    let x = (area.width.saturating_sub(popup_width)) / 2;
+    let y = (area.height.saturating_sub(popup_height)) / 2;
+
+    let popup_area = Rect {
+        x,
+        y,
+        width: popup_width.min(area.width),
+        height: popup_height.min(area.height),
+    };
+
+    let alert_block = Block::default()
+        .title("🔔 Price Alerts Management")
+        .title_style(Style::default().fg(Color::Yellow).bold())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::White))
+        .style(Style::default().bg(Color::Black));
+
+    f.render_widget(alert_block.clone(), popup_area);
+
+    let alert_area = alert_block.inner(popup_area);
+
+    let alert_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(2),  // Header with stats
+            Constraint::Length(15), // Alert list
+            Constraint::Length(3),  // Instructions
+        ])
+        .split(alert_area);
+
+    // Header with alert statistics
+    let enabled_count = app.get_enabled_alert_count();
+    let total_count = app.alerts.len();
+    let recent_count = app.get_recent_alerts().len();
+
+    let header_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled(format!("Active Alerts: {} | Total: {} | Recent: {}",
+                               enabled_count, total_count, recent_count),
+                         Style::default().fg(Color::Cyan).bold()),
+        ]),
+        Line::from(vec![
+            Span::styled("Recent Alerts:", Style::default().fg(Color::Yellow)),
+        ]),
+    ]);
+    let header_widget = Paragraph::new(header_text);
+    f.render_widget(header_widget, alert_layout[0]);
+
+    // Alert list and recent notifications
+    if app.alerts.is_empty() && app.get_recent_alerts().is_empty() {
+        let empty_text = Text::from(vec![
+            Line::from("No alerts configured"),
+            Line::from(""),
+            Line::from("Create alerts to get notified when prices hit your targets!"),
+        ]);
+        let empty_widget = Paragraph::new(empty_text)
+            .style(Style::default().fg(Color::Gray));
+        f.render_widget(empty_widget, alert_layout[1]);
+    } else {
+        let mut alert_lines = Vec::new();
+
+        // Show recent alerts first
+        for (alert_msg, timestamp) in app.get_recent_alerts().iter().rev().take(3) {
+            alert_lines.push(Line::from(vec![
+                Span::styled("🔔 ", Style::default().fg(Color::Green)),
+                Span::styled(alert_msg, Style::default().fg(Color::White)),
+            ]));
+        }
+
+        if !app.get_recent_alerts().is_empty() && !app.alerts.is_empty() {
+            alert_lines.push(Line::from(""));
+        }
+
+        // Show configured alerts
+        for alert in &app.alerts {
+            let status_icon = if alert.enabled { "🟢" } else { "🔴" };
+            let condition_text = match &alert.condition {
+                crate::app::AlertCondition::PriceAbove(threshold) =>
+                    format!("Price > ${:.2}", threshold),
+                crate::app::AlertCondition::PriceBelow(threshold) =>
+                    format!("Price < ${:.2}", threshold),
+                crate::app::AlertCondition::PercentChangeAbove(threshold) =>
+                    format!("Change > {:.1}%", threshold),
+                crate::app::AlertCondition::PercentChangeBelow(threshold) =>
+                    format!("Change < {:.1}%", threshold),
+                crate::app::AlertCondition::VolumeSpike(threshold) =>
+                    format!("Volume > {:.0}", threshold),
+            };
+
+            alert_lines.push(Line::from(vec![
+                Span::raw(status_icon),
+                Span::raw(" "),
+                Span::styled(&alert.symbol, Style::default().fg(Color::Cyan).bold()),
+                Span::raw(" - "),
+                Span::styled(condition_text, Style::default().fg(Color::Yellow)),
+                Span::raw(format!(" ({} triggers)", alert.trigger_count)),
+            ]));
+        }
+
+        let alert_text = Text::from(alert_lines);
+        let alert_widget = Paragraph::new(alert_text);
+        f.render_widget(alert_widget, alert_layout[1]);
+    }
+
+    // Instructions
+    let instructions_text = Text::from(vec![
+        Line::from(vec![
+            Span::styled("Instructions:", Style::default().fg(Color::Yellow).bold()),
+        ]),
+        Line::from(vec![
+            Span::styled("• Create alerts to monitor price movements", Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::styled("• Alerts trigger terminal notifications", Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::styled("• Esc to close | This is a preview - full management coming!", Style::default().fg(Color::Gray)),
+        ]),
+    ]);
+    let instructions_widget = Paragraph::new(instructions_text);
+    f.render_widget(instructions_widget, alert_layout[2]);
 }
