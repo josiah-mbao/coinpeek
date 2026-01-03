@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoinPeek - Real-time Cryptocurrency Monitor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script>
+        let chart = null;
+        let candlestickSeries = null;
+
+        function initChart() {
+            const container = document.getElementById('chart-container');
+            if (!container) return;
+
+            // Create chart
+            chart = LightweightCharts.createChart(container, {
+                layout: {
+                    background: { color: '#0a0a0a' },
+                    textColor: '#cccccc',
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono'
+                },
+                grid: {
+                    vertLines: { color: '#333333' },
+                    horzLines: { color: '#333333' }
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal
+                },
+                rightPriceScale: {
+                    borderColor: '#333333'
+                },
+                timeScale: {
+                    borderColor: '#333333',
+                    timeVisible: true,
+                    secondsVisible: false
+                },
+                width: container.clientWidth,
+                height: 400
+            });
+
+            // Create candlestick series
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                borderDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+                wickDownColor: '#ff4444'
+            });
+
+            // Add sample data to demonstrate the chart
+            const sampleData = [
+                { time: Date.now() / 1000 - 3600 * 24 * 7, open: 50000, high: 51000, low: 49000, close: 50500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 6, open: 50500, high: 52000, low: 50000, close: 51500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 5, open: 51500, high: 53000, low: 51000, close: 52500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 4, open: 52500, high: 54000, low: 52000, close: 53500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 3, open: 53500, high: 55000, low: 53000, close: 54500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 2, open: 54500, high: 56000, low: 54000, close: 55500 },
+                { time: Date.now() / 1000 - 3600 * 24 * 1, open: 55500, high: 57000, low: 55000, close: 56500 },
+                { time: Date.now() / 1000, open: 56500, high: 58000, low: 56000, close: 57500 }
+            ];
+
+            candlestickSeries.setData(sampleData);
+            chart.timeScale().fitContent();
+
+            console.log('Chart initialized with sample data');
+
+            // Handle resize
+            const resizeObserver = new ResizeObserver(() => {
+                if (chart && container) {
+                    chart.resize(container.clientWidth, 400);
+                }
+            });
+            resizeObserver.observe(container);
+        }
+
+        function updateCoinPeekChart(data) {
+            if (!candlestickSeries || !data || data.length === 0) {
+                console.log('Chart not ready or no data');
+                return;
+            }
+
+            try {
+                // Convert timestamp to proper format for the chart
+                const formattedData = data.map(item => ({
+                    time: Math.floor(item.time / 1000), // Convert to seconds if needed
+                    open: item.open,
+                    high: item.high,
+                    low: item.low,
+                    close: item.close
+                }));
+
+                candlestickSeries.setData(formattedData);
+
+                // Fit content
+                chart.timeScale().fitContent();
+                console.log('Chart updated with', formattedData.length, 'data points');
+            } catch (error) {
+                console.error('Error updating chart:', error);
+            }
+        }
+
+        // Initialize chart when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initChart, 100); // Small delay to ensure container is ready
+        });
+    </script>
+    <script type="module">
+        import init from './pkg/coinpeek.js';
+        await init();
+    </script>
+</body>
+</html>

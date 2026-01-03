@@ -1,0 +1,411 @@
+/* CoinPeek Web Interface Styles */
+
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #2a2a2a;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #888888;
+    --accent-green: #00ff88;
+    --accent-red: #ff4444;
+    --accent-blue: #4488ff;
+    --border-color: #333333;
+    --selected-bg: #2d4a22;
+    --positive-color: #00ff88;
+    --negative-color: #ff4444;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-mono);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-size: 14px;
+    overflow-x: hidden;
+}
+
+.coinpeek-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+/* Header */
+.coinpeek-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.coinpeek-header h1 {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: var(--accent-green);
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.status {
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.status-bar button {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+.status-bar button:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 150px;
+}
+
+.control-group label {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.control-group button,
+.control-group input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.control-group button {
+    cursor: pointer;
+}
+
+.control-group button:hover {
+    background: var(--bg-primary);
+    border-color: var(--accent-blue);
+}
+
+.control-group input {
+    width: 100%;
+}
+
+.control-group input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(68, 136, 255, 0.2);
+}
+
+/* Price Table */
+.price-table {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    padding: 15px 20px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 700;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.table-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.table-row:hover {
+    background: var(--bg-tertiary);
+}
+
+.table-row.selected {
+    background: var(--selected-bg);
+    border-left: 3px solid var(--accent-green);
+}
+
+.table-row:last-child {
+    border-bottom: none;
+}
+
+.col-symbol {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.col-price {
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.col-change {
+    font-weight: 500;
+    text-align: right;
+}
+
+.col-change.positive {
+    color: var(--positive-color);
+}
+
+.col-change.negative {
+    color: var(--negative-color);
+}
+
+.col-volume {
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: right;
+    font-size: 0.9em;
+}
+
+/* Selected Info */
+.selected-info {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+/* Chart Controls */
+.chart-controls {
+    margin: 15px 0;
+}
+
+.timeframe-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.timeframe-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+}
+
+.timeframe-btn:hover {
+    background: var(--bg-primary);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+}
+
+.timeframe-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+}
+
+/* Price Chart */
+.price-chart {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.price-chart #chart-container {
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.selected-info h3 {
+    color: var(--accent-blue);
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.details-grid > div {
+    background: var(--bg-tertiary);
+    padding: 10px 15px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* Alerts */
+.alerts {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+}
+
+.alerts h3 {
+    color: var(--accent-green);
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.alerts ul {
+    list-style: none;
+}
+
+.alerts li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.alerts li:last-child {
+    border-bottom: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coinpeek-container {
+        padding: 10px;
+    }
+
+    .coinpeek-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .controls {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .table-header,
+    .table-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 10px 15px;
+    }
+
+    .table-header {
+        display: none; /* Hide header on mobile, use implicit labels */
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .coinpeek-header h1 {
+        font-size: 2em;
+    }
+
+    .status-bar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .control-group {
+        min-width: auto;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.coinpeek-container {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.table-row {
+    animation: fadeIn 0.3s ease-out;
+    animation-fill-mode: both;
+}
+
+.table-row:nth-child(1) { animation-delay: 0.05s; }
+.table-row:nth-child(2) { animation-delay: 0.1s; }
+.table-row:nth-child(3) { animation-delay: 0.15s; }
+.table-row:nth-child(4) { animation-delay: 0.2s; }
+.table-row:nth-child(5) { animation-delay: 0.25s; }
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Error states */
+.error {
+    border-color: var(--accent-red) !important;
+    background: rgba(255, 68, 68, 0.1) !important;
+}

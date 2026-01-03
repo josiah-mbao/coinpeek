@@ -1,5 +1,6 @@
 use crate::binance::{PriceInfo, Candle};
 use crate::config::Config;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::database::Database;
 use chrono::{DateTime, Utc};
 
@@ -240,7 +241,7 @@ impl App {
         }
     }
 
-    fn apply_filters_and_sorting(&mut self) {
+    pub fn apply_filters_and_sorting(&mut self) {
         let mut filtered = self.all_price_infos.clone();
 
         // Apply preset filters first

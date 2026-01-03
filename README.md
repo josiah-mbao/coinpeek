@@ -358,10 +358,13 @@ coinpeek/
 
 ## 🔮 Roadmap
 
-### **Phase 2: Real-time Feeds**
-- WebSocket connections for live price updates
+### **Phase 2: Real-time Feeds** ✅ **IMPLEMENTED**
+- **WebSocket connections for live price updates** - Real-time price streams from Binance
+- **🔗 WS Live** button in web version for instant real-time updates
 - Order book depth visualization
 - Real-time trade feed
+- Sub-second price updates via WebSocket streams
+- Automatic reconnection on connection loss
 
 ### **Phase 3: Advanced Features**
 - Rate limiting and request management
