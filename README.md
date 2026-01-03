@@ -23,7 +23,7 @@
 - 🖥️ **Minimalist TUI** - Clean terminal interface powered by `ratatui`
 - 🔄 **Auto-refresh** - Configurable update intervals with intelligent caching
 - 📈 **Multi-sort Options** - Sort by symbol, price, 24h change, or volume
-- 🎯 **Interactive Navigation** - Keyboard-driven selection and browsing
+- 🎯 **Interactive Navigation** - Keyboard and mouse-driven selection and browsing
 
 ### **Production Features**
 - 🧪 **Comprehensive Testing** - 30 unit tests covering all critical paths
@@ -245,10 +245,11 @@ cargo test
 cargo build --release
 ```
 
-**Keyboard Controls**:
+**Controls**:
 
 **Navigation:**
 - `↑/↓` — Navigate between cryptocurrencies
+- **Mouse Click** — Click on any cryptocurrency to select it
 - `?` — Show help screen
 - `q` or `Ctrl+C` — Quit
 

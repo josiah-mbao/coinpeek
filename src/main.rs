@@ -10,7 +10,7 @@ mod utils;
 use std::error::Error;
 use std::io;
 
-use crossterm::event::{EnableMouseCapture, DisableMouseCapture};
+use crossterm::event::{EnableMouseCapture, DisableMouseCapture, MouseEvent, MouseEventKind};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -19,6 +19,60 @@ use crossterm::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::time::{Duration, Instant};
+
+/// Handle mouse click events for cryptocurrency selection
+fn handle_mouse_click(app: &mut app::App, mouse_event: MouseEvent) {
+    // Only handle left mouse button down events
+    if mouse_event.kind != MouseEventKind::Down(crossterm::event::MouseButton::Left) {
+        return;
+    }
+
+    let mouse_x = mouse_event.column as usize;
+    let mouse_y = mouse_event.row as usize;
+
+    // Account for main block borders (1 line/column offset)
+    // Mouse coordinates are 0-based from terminal top-left
+    if mouse_x < 1 || mouse_y < 1 {
+        return; // Clicked in border area
+    }
+
+    let _inner_x = mouse_x - 1;
+    let inner_y = mouse_y - 1;
+
+    // Note: X coordinate checking would require terminal width knowledge
+    // For now, we accept clicks anywhere and assume they're in the left panel
+    // In a more sophisticated implementation, we'd pass terminal dimensions
+
+    // Skip if no cryptocurrencies to select
+    if app.price_infos.is_empty() {
+        return;
+    }
+
+    // Approximate layout:
+    // - Title bar: 1 line
+    // - Top margin: 1 line
+    // - Each crypto: 3 lines
+    // So crypto at index i starts at Y = 1 + 1 + (i * 3) = 2 + (i * 3)
+
+    let title_height = 1;
+    let top_margin = 1;
+    let crypto_height = 3;
+
+    // Calculate which crypto was clicked
+    let crypto_start_y = title_height + top_margin;
+    if inner_y < crypto_start_y {
+        return; // Clicked in title or margin area
+    }
+
+    let relative_y = inner_y - crypto_start_y;
+    let clicked_index = relative_y / crypto_height;
+
+    // Bounds check
+    if clicked_index < app.price_infos.len() {
+        app.selected_index = clicked_index;
+        // Note: candle fetching will happen in the main loop
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -137,6 +191,11 @@ async fn run_loop<B: ratatui::backend::Backend>(
                         }
                     }
                     _ => {}
+                }
+            } else if let Event::Mouse(mouse_event) = event::read()? {
+                // Handle mouse events when help is not active
+                if !app.show_help {
+                    handle_mouse_click(&mut app, mouse_event);
                 }
             }
         }
