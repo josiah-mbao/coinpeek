@@ -56,10 +56,17 @@ fn render_crypto_list(f: &mut Frame, area: Rect, app: &App) {
     let base_title = format!("📊 Cryptocurrency Prices | {} | {} | {}/{} coins | {}",
                            sort_info, filter_info, visible, total, sync_status);
 
-    let title = if app.search_mode {
+    let title_with_search = if app.search_mode {
         format!("🔍 Search: \"{}\" | {}", app.search_query, base_title)
     } else {
         base_title
+    };
+
+    // Add error status to title if there are active errors
+    let title = if let Some(error_summary) = app.get_error_summary() {
+        format!("{} | {}", error_summary, title_with_search)
+    } else {
+        title_with_search
     };
 
     let list_block = Block::default()

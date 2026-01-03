@@ -4,6 +4,34 @@ use crate::database::Database;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ErrorType {
+    Network,      // Connection/internet issues
+    Api,         // Binance API problems (rate limits, outages, invalid responses)
+    Database,    // SQLite/storage issues
+    Config,      // Configuration file problems
+    Validation,  // Data validation/parsing errors
+}
+
+#[derive(Debug, Clone)]
+pub enum ErrorSeverity {
+    Critical,    // App-breaking, requires immediate attention
+    Warning,     // Degraded functionality, user should be aware
+    Info,        // Minor issues, mostly informational
+}
+
+#[derive(Debug, Clone)]
+pub struct AppError {
+    pub error_type: ErrorType,
+    pub severity: ErrorSeverity,
+    pub message: String,
+    pub details: Option<String>,
+    pub timestamp: DateTime<Utc>,
+    pub resolved: bool,
+    pub retry_count: u32,
+    pub recovery_suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum SortDirection {
     Ascending,
     Descending,
@@ -140,6 +168,7 @@ pub struct App {
     pub show_help: bool,                 // Show help overlay
     pub search_mode: bool,               // Interactive search mode
     pub search_query: String,            // Current search query
+    pub errors: Vec<AppError>,           // Active application errors
 }
 
 impl App {
@@ -164,6 +193,7 @@ impl App {
             show_help: false,
             search_mode: false,
             search_query: String::new(),
+            errors: Vec::new(),
         }
     }
 
@@ -539,6 +569,112 @@ impl App {
             }
             None => true,
         }
+    }
+
+    // Error management methods
+    pub fn add_error(&mut self, error_type: ErrorType, severity: ErrorSeverity, message: String, details: Option<String>, recovery_suggestion: Option<String>) {
+        let error = AppError {
+            error_type,
+            severity,
+            message,
+            details,
+            timestamp: Utc::now(),
+            resolved: false,
+            retry_count: 0,
+            recovery_suggestion,
+        };
+        self.errors.push(error);
+    }
+
+    pub fn resolve_error(&mut self, index: usize) {
+        if let Some(error) = self.errors.get_mut(index) {
+            error.resolved = true;
+        }
+    }
+
+    pub fn clear_resolved_errors(&mut self) {
+        self.errors.retain(|e| !e.resolved);
+    }
+
+    pub fn get_active_error_count(&self) -> usize {
+        self.errors.iter().filter(|e| !e.resolved).count()
+    }
+
+    pub fn get_error_summary(&self) -> Option<String> {
+        let active_errors: Vec<&AppError> = self.errors.iter().filter(|e| !e.resolved).collect();
+
+        if active_errors.is_empty() {
+            return None;
+        }
+
+        let critical_count = active_errors.iter().filter(|e| matches!(e.severity, ErrorSeverity::Critical)).count();
+        let warning_count = active_errors.iter().filter(|e| matches!(e.severity, ErrorSeverity::Warning)).count();
+
+        let mut summary_parts = Vec::new();
+
+        if critical_count > 0 {
+            summary_parts.push(format!("🚨 {} critical", critical_count));
+        }
+        if warning_count > 0 {
+            summary_parts.push(format!("⚠️ {} warnings", warning_count));
+        }
+
+        if !summary_parts.is_empty() {
+            Some(summary_parts.join(", "))
+        } else {
+            Some(format!("ℹ️ {} info", active_errors.len()))
+        }
+    }
+
+    pub fn retry_failed_operations(&mut self) {
+        // Mark all errors as having been retried
+        for error in &mut self.errors {
+            if !error.resolved {
+                error.retry_count += 1;
+            }
+        }
+        // Note: Actual retry logic would be implemented in the main loop
+    }
+
+    // Convenience methods for common error types
+    pub fn add_network_error(&mut self, message: String, details: Option<String>) {
+        self.add_error(
+            ErrorType::Network,
+            ErrorSeverity::Warning,
+            message,
+            details,
+            Some("Check your internet connection".to_string()),
+        );
+    }
+
+    pub fn add_api_error(&mut self, message: String, details: Option<String>) {
+        self.add_error(
+            ErrorType::Api,
+            ErrorSeverity::Warning,
+            message,
+            details,
+            Some("API may be temporarily unavailable - data will refresh when available".to_string()),
+        );
+    }
+
+    pub fn add_database_error(&mut self, message: String, details: Option<String>) {
+        self.add_error(
+            ErrorType::Database,
+            ErrorSeverity::Critical,
+            message,
+            details,
+            Some("Application may run in limited mode - restart may help".to_string()),
+        );
+    }
+
+    pub fn add_config_error(&mut self, message: String, details: Option<String>) {
+        self.add_error(
+            ErrorType::Config,
+            ErrorSeverity::Critical,
+            message,
+            details,
+            Some("Check coinpeek.json configuration file".to_string()),
+        );
     }
 }
 

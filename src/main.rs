@@ -142,11 +142,20 @@ async fn run_loop<B: ratatui::backend::Backend>(
     // Initial API fetch for fresh data
     if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
         // Store in database
-        db.store_price_infos(&price_infos).await?;
+        if let Err(e) = db.store_price_infos(&price_infos).await {
+            app.add_database_error(
+                "Failed to store initial price data".to_string(),
+                Some(format!("Database error: {}", e)),
+            );
+        }
         app.record_successful_sync();
         app.update_prices(price_infos);
     } else {
         app.record_sync_failure();
+        app.add_api_error(
+            "Failed to fetch initial price data".to_string(),
+            Some("Check your internet connection and try again".to_string()),
+        );
     }
 
     let mut last_tick = Instant::now();
@@ -195,12 +204,19 @@ async fn run_loop<B: ratatui::backend::Backend>(
                         if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
                             // Store in database
                             if let Err(e) = db.store_price_infos(&price_infos).await {
-                                eprintln!("Failed to store prices: {}", e);
+                                app.add_database_error(
+                                    "Failed to store manually refreshed data".to_string(),
+                                    Some(format!("Database error: {}", e)),
+                                );
                             }
                             app.record_successful_sync();
                             app.update_prices(price_infos);
                         } else {
                             app.record_sync_failure();
+                            app.add_api_error(
+                                "Manual refresh failed".to_string(),
+                                Some("Press 'r' to retry or check your internet connection".to_string()),
+                            );
                         }
                     }
                     _ => {}
@@ -217,12 +233,19 @@ async fn run_loop<B: ratatui::backend::Backend>(
             if let Ok(price_infos) = binance::fetch_price_infos(&symbols).await {
                 // Store in database
                 if let Err(e) = db.store_price_infos(&price_infos).await {
-                    eprintln!("Failed to store prices: {}", e);
+                    app.add_database_error(
+                        "Failed to store updated price data".to_string(),
+                        Some(format!("Database error: {}", e)),
+                    );
                 }
                 app.record_successful_sync();
                 app.update_prices(price_infos);
             } else {
                 app.record_sync_failure();
+                app.add_api_error(
+                    "Failed to refresh price data".to_string(),
+                    Some("Automatic updates will retry - check connection if persistent".to_string()),
+                );
             }
             last_tick = Instant::now();
         }
