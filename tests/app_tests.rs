@@ -1,4 +1,4 @@
-use coinpeek::app::{App, SortMode};
+use coinpeek::app::{App, SortMode, SortDirection, FilterPreset, FilterType};
 use coinpeek::config::Config;
 use coinpeek::binance::{PriceInfo, Candle};
 
@@ -13,7 +13,7 @@ fn test_app_initialization() {
 
     assert!(app.price_infos.is_empty());
     assert_eq!(app.selected_index, 0);
-    assert_eq!(app.sort_mode, SortMode::Symbol);
+    assert_eq!(app.sort_config.mode, SortMode::Symbol);
     assert!(!app.paused);
     assert!(app.selected_candles.is_empty());
     assert!(app.selected_symbol_candles.is_empty());
@@ -92,30 +92,31 @@ fn test_sort_mode_changes() {
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT");
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
 
-    // Test price sorting (highest price first)
+    // Test price sorting (ascending by default - lowest price first)
     app.next_sort_mode();
-    assert_eq!(app.sort_mode, SortMode::Price);
+    assert_eq!(app.sort_config.mode, SortMode::Price);
     app.update_prices(price_infos.clone()); // Re-sort
-    assert_eq!(app.price_infos[0].symbol, "BTCUSDT"); // Higher price first (50000 > 3000)
-    assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
+    assert_eq!(app.price_infos[0].symbol, "ETHUSDT"); // Lower price first (3000 < 50000)
+    assert_eq!(app.price_infos[1].symbol, "BTCUSDT");
 
     // Test change percent sorting (highest change percent first)
     app.next_sort_mode();
-    assert_eq!(app.sort_mode, SortMode::ChangePercent);
+    assert_eq!(app.sort_config.mode, SortMode::ChangePercent);
     app.update_prices(price_infos.clone());
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT"); // Higher change percent first (+2.5% > -1.2%)
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
 
-    // Test volume sorting (highest volume first)
+    // Test volume sorting - descending for highest volume first
     app.next_sort_mode();
-    assert_eq!(app.sort_mode, SortMode::Volume);
-    app.update_prices(price_infos.clone());
+    assert_eq!(app.sort_config.mode, SortMode::Volume);
+    app.sort_config.direction = SortDirection::Descending; // Set to descending
+    app.update_prices(price_infos.clone()); // Re-sort with new direction
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT"); // Higher volume first (1000 > 500)
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
 
     // Cycle back to symbol sorting
     app.next_sort_mode();
-    assert_eq!(app.sort_mode, SortMode::Symbol);
+    assert_eq!(app.sort_config.mode, SortMode::Symbol);
 }
 
 #[test]
@@ -430,4 +431,307 @@ fn test_selection_bounds_checking() {
 
     // Should reset to valid index
     assert_eq!(app.selected_index, 0);
+}
+
+#[test]
+fn test_filter_preset_application() {
+    let config = Config {
+        symbols: vec!["BTCUSDT".to_string()],
+        refresh_interval_seconds: 30,
+    };
+
+    let mut app = App::new(config);
+
+    let price_infos = vec![
+        PriceInfo {
+            symbol: "BTCUSDT".to_string(),
+            price: 50000.0,
+            price_change_percent: 2.5, // Top gainer
+            volume: 1000.0,
+            high_24h: 51000.0,
+            low_24h: 49000.0,
+            prev_close_price: 48750.0,
+        },
+        PriceInfo {
+            symbol: "ETHUSDT".to_string(),
+            price: 3000.0,
+            price_change_percent: -1.2, // Neutral
+            volume: 500.0,
+            high_24h: 3100.0,
+            low_24h: 2900.0,
+            prev_close_price: 3036.0,
+        },
+        PriceInfo {
+            symbol: "ADAUSDT".to_string(),
+            price: 1.5,
+            price_change_percent: -8.0, // Top loser
+            volume: 100.0,
+            high_24h: 1.6,
+            low_24h: 1.4,
+            prev_close_price: 1.63,
+        },
+        PriceInfo {
+            symbol: "SOLUSDT".to_string(),
+            price: 100.0,
+            price_change_percent: 0.5, // Stable
+            volume: 2000.0, // High volume
+            high_24h: 105.0,
+            low_24h: 95.0,
+            prev_close_price: 99.5,
+        },
+        PriceInfo {
+            symbol: "DOTUSDT".to_string(),
+            price: 25.0,
+            price_change_percent: 15.0, // Volatile
+            volume: 800.0,
+            high_24h: 30.0,
+            low_24h: 20.0,
+            prev_close_price: 21.7,
+        },
+    ];
+
+    app.update_prices(price_infos.clone());
+    assert_eq!(app.price_infos.len(), 5); // All coins initially
+
+    // Test Top Gainers preset
+    app.set_filter_preset(FilterPreset::TopGainers);
+    assert_eq!(app.price_infos.len(), 1); // Only DOT (15.0%) - BTC (2.5%) is not > 5%
+    assert!(app.price_infos.iter().all(|p| p.price_change_percent > 5.0));
+
+    // Test Top Losers preset
+    app.set_filter_preset(FilterPreset::TopLosers);
+    assert_eq!(app.price_infos.len(), 1); // Only ADA (-8.0%)
+    assert!(app.price_infos.iter().all(|p| p.price_change_percent < -5.0));
+
+    // Test High Volume preset
+    app.set_filter_preset(FilterPreset::HighVolume);
+    assert_eq!(app.price_infos.len(), 2); // SOL (2000) and BTC (1000) - top 40%
+    assert!(app.price_infos.iter().any(|p| p.symbol == "SOLUSDT"));
+    assert!(app.price_infos.iter().any(|p| p.symbol == "BTCUSDT"));
+
+    // Test Volatile preset
+    app.set_filter_preset(FilterPreset::Volatile);
+    assert_eq!(app.price_infos.len(), 2); // DOT (15.0%) and BTC (2.5%) - abs > 3.0%
+    assert!(app.price_infos.iter().all(|p| p.price_change_percent.abs() > 3.0));
+
+    // Test Stable preset
+    app.set_filter_preset(FilterPreset::Stable);
+    assert_eq!(app.price_infos.len(), 1); // Only SOL (0.5%) - abs < 1.0%
+    assert!(app.price_infos.iter().all(|p| p.price_change_percent.abs() < 1.0));
+
+    // Test All preset
+    app.set_filter_preset(FilterPreset::All);
+    assert_eq!(app.price_infos.len(), 5); // All coins back
+}
+
+#[test]
+fn test_custom_filter_application() {
+    let config = Config {
+        symbols: vec!["BTCUSDT".to_string()],
+        refresh_interval_seconds: 30,
+    };
+
+    let mut app = App::new(config);
+
+    let price_infos = vec![
+        PriceInfo {
+            symbol: "BTCUSDT".to_string(),
+            price: 50000.0,
+            price_change_percent: 2.5,
+            volume: 1000.0,
+            high_24h: 51000.0,
+            low_24h: 49000.0,
+            prev_close_price: 48750.0,
+        },
+        PriceInfo {
+            symbol: "ETHUSDT".to_string(),
+            price: 3000.0,
+            price_change_percent: -1.2,
+            volume: 500.0,
+            high_24h: 3100.0,
+            low_24h: 2900.0,
+            prev_close_price: 3036.0,
+        },
+        PriceInfo {
+            symbol: "ADAUSDT".to_string(),
+            price: 1.5,
+            price_change_percent: 0.5,
+            volume: 100.0,
+            high_24h: 1.6,
+            low_24h: 1.4,
+            prev_close_price: 1.49,
+        },
+    ];
+
+    app.update_prices(price_infos.clone());
+    assert_eq!(app.price_infos.len(), 3);
+
+    // Test price range filter
+    app.add_filter(FilterType::PriceRange {
+        min: Some(1000.0),
+        max: Some(40000.0)
+    });
+    assert_eq!(app.price_infos.len(), 1); // Only ETH (3000)
+    assert_eq!(app.price_infos[0].symbol, "ETHUSDT");
+
+    // Clear filters and test volume filter
+    app.clear_all_filters();
+    app.update_prices(price_infos.clone());
+    app.add_filter(FilterType::VolumeRange {
+        min: Some(200.0),
+        max: None
+    });
+    assert_eq!(app.price_infos.len(), 2); // ETH (500) and BTC (1000)
+    assert!(app.price_infos.iter().all(|p| p.volume >= 200.0));
+
+    // Clear and test symbol search
+    app.clear_all_filters();
+    app.update_prices(price_infos.clone());
+    app.add_filter(FilterType::SymbolSearch("BTC".to_string()));
+    assert_eq!(app.price_infos.len(), 1);
+    assert_eq!(app.price_infos[0].symbol, "BTCUSDT");
+
+    // Test case-insensitive search
+    app.clear_all_filters();
+    app.update_prices(price_infos.clone());
+    app.add_filter(FilterType::SymbolSearch("btc".to_string()));
+    assert_eq!(app.price_infos.len(), 1);
+    assert_eq!(app.price_infos[0].symbol, "BTCUSDT");
+}
+
+#[test]
+fn test_offline_awareness_tracking() {
+    let config = Config {
+        symbols: vec!["BTCUSDT".to_string()],
+        refresh_interval_seconds: 30,
+    };
+
+    let mut app = App::new(config);
+
+    // Initially no sync data
+    assert!(app.data_status.last_successful_sync.is_none());
+    assert!(!app.data_status.offline_mode);
+    assert_eq!(app.data_status.consecutive_failures, 0);
+    assert_eq!(app.get_offline_indicator(), "🟢 synced never");
+
+    // Record successful sync
+    app.record_successful_sync();
+    assert!(app.data_status.last_successful_sync.is_some());
+    assert!(!app.data_status.offline_mode);
+    assert_eq!(app.data_status.consecutive_failures, 0);
+    assert!(app.get_offline_indicator().contains("🟢 synced just now"));
+
+    // Record some failures
+    app.record_sync_failure();
+    assert_eq!(app.data_status.consecutive_failures, 1);
+    assert!(!app.data_status.offline_mode);
+    assert!(app.get_offline_indicator().contains("🟡 1 failures"));
+
+    app.record_sync_failure();
+    app.record_sync_failure();
+    assert_eq!(app.data_status.consecutive_failures, 3);
+    assert!(app.data_status.offline_mode); // Should auto-enable offline mode
+    assert!(app.get_offline_indicator().contains("🔴 OFFLINE"));
+
+    // Toggle offline mode manually
+    app.toggle_offline_mode();
+    assert!(!app.data_status.offline_mode);
+    assert_eq!(app.data_status.consecutive_failures, 0); // Should reset failures
+    assert!(app.get_offline_indicator().contains("🟢 synced"));
+}
+
+#[test]
+fn test_data_age_calculations() {
+    use chrono::{Duration, Utc};
+
+    let config = Config {
+        symbols: vec!["BTCUSDT".to_string()],
+        refresh_interval_seconds: 30,
+    };
+
+    let mut app = App::new(config);
+
+    // No data yet
+    assert_eq!(app.get_data_age_string(), "never");
+
+    // Set a timestamp 2 hours ago
+    let two_hours_ago = Utc::now() - Duration::hours(2);
+    app.data_status.last_successful_sync = Some(two_hours_ago);
+
+    let age_string = app.get_data_age_string();
+    assert!(age_string.contains("2h ago") || age_string.contains("1h ago"));
+
+    // Set a timestamp 30 minutes ago
+    let thirty_min_ago = Utc::now() - Duration::minutes(30);
+    app.data_status.last_successful_sync = Some(thirty_min_ago);
+
+    let age_string = app.get_data_age_string();
+    assert!(age_string.contains("30m ago") || age_string.contains("29m ago"));
+
+    // Set a timestamp just now
+    app.data_status.last_successful_sync = Some(Utc::now());
+    assert_eq!(app.get_data_age_string(), "just now");
+}
+
+#[test]
+fn test_combined_filtering_and_sorting() {
+    let config = Config {
+        symbols: vec!["BTCUSDT".to_string()],
+        refresh_interval_seconds: 30,
+    };
+
+    let mut app = App::new(config);
+
+    let price_infos = vec![
+        PriceInfo {
+            symbol: "BTCUSDT".to_string(),
+            price: 50000.0,
+            price_change_percent: 2.5,
+            volume: 1000.0,
+            high_24h: 51000.0,
+            low_24h: 49000.0,
+            prev_close_price: 48750.0,
+        },
+        PriceInfo {
+            symbol: "ETHUSDT".to_string(),
+            price: 3000.0,
+            price_change_percent: -1.2,
+            volume: 1500.0, // Higher volume than BTC
+            high_24h: 3100.0,
+            low_24h: 2900.0,
+            prev_close_price: 3036.0,
+        },
+        PriceInfo {
+            symbol: "ADAUSDT".to_string(),
+            price: 1.5,
+            price_change_percent: 8.0, // Top gainer
+            volume: 500.0,
+            high_24h: 1.6,
+            low_24h: 1.4,
+            prev_close_price: 1.39,
+        },
+    ];
+
+    app.update_prices(price_infos.clone());
+
+    // Apply Top Gainers preset (ADA with +8.0%)
+    app.set_filter_preset(FilterPreset::TopGainers);
+    assert_eq!(app.price_infos.len(), 1);
+    assert_eq!(app.price_infos[0].symbol, "ADAUSDT");
+
+    // Now sort by volume (should still be just ADA)
+    app.next_sort_mode(); // Volume sort
+    app.sort_config.direction = SortDirection::Descending;
+    app.update_prices(price_infos.clone()); // Re-apply filters and sorting
+    assert_eq!(app.price_infos.len(), 1);
+    assert_eq!(app.price_infos[0].symbol, "ADAUSDT");
+
+    // Clear filters and sort by volume descending
+    app.clear_all_filters();
+    app.next_sort_mode(); // Volume sort
+    app.sort_config.direction = SortDirection::Descending;
+    app.update_prices(price_infos.clone());
+    assert_eq!(app.price_infos[0].symbol, "ETHUSDT"); // ETH has highest volume (1500)
+    assert_eq!(app.price_infos[1].symbol, "BTCUSDT"); // BTC has 1000
+    assert_eq!(app.price_infos[2].symbol, "ADAUSDT"); // ADA has 500
 }
