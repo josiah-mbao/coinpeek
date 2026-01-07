@@ -729,7 +729,7 @@ fn test_combined_filtering_and_sorting() {
 
     // Clear filters and sort by volume descending
     app.clear_all_filters();
-    app.next_sort_mode(); // Volume sort
+    app.sort_config.mode = SortMode::Volume;
     app.sort_config.direction = SortDirection::Descending;
     app.update_prices(price_infos.clone());
     assert_eq!(app.price_infos[0].symbol, "ETHUSDT"); // ETH has highest volume (1500)
