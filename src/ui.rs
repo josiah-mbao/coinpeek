@@ -2,9 +2,9 @@
 
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Sparkline},
+    widgets::{Block, BorderType, Borders, Clear, Gauge, Paragraph, Sparkline, Wrap},
     Frame,
 };
 
@@ -28,13 +28,50 @@ pub fn render_dashboard(
         return;
     }
 
+    // Enhanced animated title with status
+    let sync_status = app.get_offline_indicator();
+    let (visible, total) = app.get_visible_count();
+    let error_summary = app.get_error_summary();
+
+    let mut title_parts = vec![
+        Span::styled("🚀 ", Style::default().fg(Color::Yellow)),
+        Span::styled("CoinPeek", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::raw(" | "),
+        Span::styled(format!("{}/{} coins", visible, total), Style::default().fg(Color::White)),
+        Span::raw(" | "),
+        Span::styled(&sync_status, Style::default().fg(match sync_status.chars().next() {
+            Some('🟢') => Color::Green,
+            Some('🟡') => Color::Yellow,
+            Some('🔴') => Color::Red,
+            _ => Color::Gray,
+        })),
+    ];
+
+    if let Some(error) = &error_summary {
+        title_parts.push(Span::raw(" | "));
+        title_parts.push(Span::styled(error, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+    }
+
+    let title_line = Line::from(title_parts);
+
+    // Split area vertically: main content and footer
+    let vertical_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(10),    // Main content (minimum 10 lines)
+            Constraint::Length(1),  // Footer hint
+        ])
+        .split(area);
+
     let main_block = Block::default()
-        .title("🚀 CoinPeek")
-        .borders(Borders::ALL);
+        .title(title_line)
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Blue));
 
-    f.render_widget(main_block.clone(), area);
+    f.render_widget(main_block.clone(), vertical_layout[0]);
 
-    let main_area = main_block.inner(area);
+    let main_area = main_block.inner(vertical_layout[0]);
 
     // Split into left (list) and right (details) panels
     let main_layout = Layout::default()
@@ -50,6 +87,16 @@ pub fn render_dashboard(
 
     // Right panel: Detailed view of selected crypto
     render_crypto_details(f, main_layout[1], app);
+
+    // Footer hint
+    let footer_text = Text::from(Line::from(vec![
+        Span::styled("Press ", Style::default().fg(Color::Gray)),
+        Span::styled("?", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(" for help", Style::default().fg(Color::Gray)),
+    ]));
+    let footer_widget = Paragraph::new(footer_text)
+        .alignment(ratatui::layout::Alignment::Center);
+    f.render_widget(footer_widget, vertical_layout[1]);
 }
 
 fn render_crypto_list(f: &mut Frame, area: Rect, app: &App) {
@@ -112,49 +159,84 @@ fn render_crypto_list(f: &mut Frame, area: Rect, app: &App) {
             "■"
         };
 
+        // Enhanced selection styling with borders and gradients
+        if is_selected {
+            // Render selection border/background first
+            let selection_block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Rgb(20, 20, 40))); // Dark blue gradient base
+
+            f.render_widget(selection_block.clone(), layout[i]);
+
+            // Selection indicator
+            let indicator_block = Block::default()
+                .borders(Borders::LEFT)
+                .border_type(BorderType::Double)
+                .border_style(Style::default().fg(Color::Yellow))
+                .style(Style::default().bg(Color::Rgb(40, 40, 80))); // Lighter blue
+
+            let indicator_area = Rect {
+                x: layout[i].x,
+                y: layout[i].y,
+                width: 2,
+                height: layout[i].height,
+            };
+            f.render_widget(indicator_block, indicator_area);
+        }
+
+        // Create content with enhanced styling for selected items
         let mut price_line = vec![
-            Span::raw("  "), // Add some left padding
-            Span::raw(format!("{:<8}: ", price_info.symbol)),
-            Span::styled(format!("${:.2}", price_info.price), Style::default().bold()),
-            Span::raw("  "), // Add spacing before change
+            Span::raw(if is_selected { "▶ " } else { "  " }), // Selection arrow
+            Span::styled(
+                format!("{:<8}", price_info.symbol),
+                Style::default()
+                    .fg(if is_selected { Color::White } else { Color::Cyan })
+                    .add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() })
+            ),
+            Span::raw(": "),
+            Span::styled(
+                format!("${:.2}", price_info.price),
+                Style::default()
+                    .fg(if is_selected { Color::Yellow } else { Color::White })
+                    .add_modifier(Modifier::BOLD)
+            ),
+            Span::raw("  "),
             Span::styled(
                 format!("{} {:.2}%", change_symbol, price_info.price_change_percent),
-                Style::default().fg(change_color),
+                Style::default().fg(change_color).add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() }),
             ),
         ];
 
         let mut volume_line = vec![
-            Span::raw("           "), // Add left padding to align with price line
+            Span::raw(if is_selected { "  " } else { "           " }),
             Span::styled(
                 format!("Vol: {:.0}", price_info.volume),
-                Style::default().fg(Color::Blue),
+                Style::default()
+                    .fg(if is_selected { Color::Blue } else { Color::Blue })
+                    .add_modifier(if is_selected { Modifier::ITALIC } else { Modifier::empty() })
             ),
-            Span::raw("  "), // Add spacing
+            Span::raw("  "),
             Span::styled(
                 format!("H:{:.2} L:{:.2}", price_info.high_24h, price_info.low_24h),
-                Style::default().fg(Color::Gray),
+                Style::default()
+                    .fg(if is_selected { Color::Gray } else { Color::Gray })
+                    .add_modifier(if is_selected { Modifier::DIM } else { Modifier::empty() })
             ),
         ];
-
-        // Apply selection highlighting
-        let bg_color = if is_selected {
-            Color::Blue
-        } else {
-            Color::Reset
-        };
-
-        for span in &mut price_line {
-            span.style = span.style.bg(bg_color);
-        }
-        for span in &mut volume_line {
-            span.style = span.style.bg(bg_color);
-        }
 
         let price_line = Line::from(price_line);
         let volume_line = Line::from(volume_line);
 
         let text = Text::from(vec![price_line, volume_line]);
-        let widget = Paragraph::new(text);
+        let mut widget = Paragraph::new(text);
+
+        // Add padding for selected items to account for borders
+        if is_selected {
+            widget = widget.block(Block::default().padding(ratatui::widgets::Padding::new(1, 1, 0, 0)));
+        }
+
         f.render_widget(widget, layout[i]);
     }
 }
@@ -228,25 +310,51 @@ fn render_crypto_details(f: &mut Frame, area: Rect, app: &App) {
         let price_widget = Paragraph::new(price_text);
         f.render_widget(price_widget, details_layout[1]);
 
-        // Price chart (sparkline)
+        // Price chart (sparkline) with loading animation
+        let chart_area = details_layout[2];
         if !app.selected_candles.is_empty() {
             let chart_data: Vec<u64> = app.selected_candles.iter()
                 .map(|candle| (candle.close * 100.0) as u64) // Convert to cents for better precision
                 .collect();
 
             let sparkline = Sparkline::default()
-                .block(Block::default().title("📈 5m Chart").borders(Borders::ALL))
+                .block(Block::default()
+                    .title("📈 5m Chart")
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Color::Green)))
                 .data(&chart_data)
                 .style(Style::default().fg(Color::Cyan));
 
-            f.render_widget(sparkline, details_layout[2]);
+            f.render_widget(sparkline, chart_area);
         } else {
-            let no_chart_text = Text::from(vec![
-                Line::from("Loading chart data..."),
+            // Animated loading indicator
+            let loading_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let frame_index = ((std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() / 100) % loading_frames.len() as u128) as usize;
+
+            let loading_text = Text::from(vec![
+                Line::from(vec![
+                    Span::styled(loading_frames[frame_index], Style::default().fg(Color::Yellow)),
+                    Span::raw(" "),
+                    Span::styled("Loading chart data...", Style::default().fg(Color::White)),
+                ]),
+                Line::from(vec![
+                    Span::styled("Fetching latest price action", Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC)),
+                ]),
             ]);
-            let no_chart_widget = Paragraph::new(no_chart_text)
-                .block(Block::default().title("📈 5m Chart").borders(Borders::ALL));
-            f.render_widget(no_chart_widget, details_layout[2]);
+
+            let loading_widget = Paragraph::new(loading_text)
+                .block(Block::default()
+                    .title("📈 5m Chart")
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Color::Yellow)))
+                .alignment(ratatui::layout::Alignment::Center);
+
+            f.render_widget(loading_widget, chart_area);
         }
 
         // 24h change
