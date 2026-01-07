@@ -6,7 +6,7 @@
 
 A high-performance cryptocurrency price monitor built with Rust, featuring both terminal and web interfaces. Real-time price tracking from Binance API with persistent SQLite storage and comprehensive offline capabilities.
 
-![coinpeek_demo](https://github.com/user-attachments/assets/d075dee7-08ec-4265-88f8-574b751b81aa)
+![coinpeek_demo](coinpeek-demo.gif)
 
 ## ✨ Features
 
