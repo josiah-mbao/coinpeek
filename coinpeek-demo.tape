@@ -1,37 +1,23 @@
 Output coinpeek-demo.gif
 
-Require echo
-
 Set Shell "bash"
-Set FontSize 24
-Set Width 1200
-Set Height 600
-Set TypingSpeed 100ms
+Set FontSize 20
+Set Width 1000
+Set Height 500
 
-Type "echo '🚀 CoinPeek - Real-time Cryptocurrency Monitor'" Enter
-Type "echo 'High-performance terminal app for crypto price monitoring'" Enter
-Type "echo 'Built with Rust • Real-time Binance API data • SQLite storage'" Enter
-Sleep 1
-
+Type "echo 'CoinPeek - Real-time Cryptocurrency Monitor'" Enter
+Type "echo '========================================='" Enter
 Type "echo ''" Enter
-Type "echo '🎯 Perfect First-Run Experience:'" Enter
-Type "echo '✅ Default symbols loaded (BTC, ETH)'" Enter
-Type "echo '✅ Prices moving in real-time'" Enter
-Type "echo '✅ Visible freshness indicator (🟢 synced X ago)'" Enter
-Type "echo '✅ Footer hint: Press ? for help'" Enter
-Sleep 1
-
+Type "echo 'Perfect First-Run Experience:'" Enter
+Type "echo '✓ Default symbols: BTC, ETH, BNB, ADA, SOL, DOT, DOGE, AVAX, LTC, LINK'" Enter
+Type "echo '✓ Live prices updating every 5 seconds'" Enter
+Type "echo '✓ Freshness indicator: 🟢 synced X ago'" Enter
+Type "echo '✓ Help hint: Press ? for help'" Enter
 Type "echo ''" Enter
-Type "echo '🚀 Quick Start:'" Enter
-Type "echo '$ git clone https://github.com/josiah-mbao/coinpeek.git'" Enter
-Type "echo '$ cd coinpeek && cargo run --all-features'" Enter
-Sleep 1
-
+Type "echo 'Installation:'" Enter
+Type "echo '$ cargo install coinpeek'" Enter
+Type "echo '$ coinpeek'" Enter
 Type "echo ''" Enter
-Type "echo '🎮 Controls: ↑/↓ navigation • / search • ? help • q quit'" Enter
-Type "echo 'Built with ratatui • tokio • rusqlite • reqwest'" Enter
-Sleep 1
-
+Type "echo 'Controls: ↑/↓ navigate • / search • ? help • q quit'" Enter
 Type "echo ''" Enter
-Type "echo '🔗 https://github.com/josiah-mbao/coinpeek'" Enter
-Type "echo '✨ Monitor cryptocurrencies with style!'" Enter
+Type "echo 'Built with Rust • https://github.com/josiah-mbao/coinpeek'" Enter
