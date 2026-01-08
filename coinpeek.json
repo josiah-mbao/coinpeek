@@ -1,0 +1,20 @@
+{
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "ADAUSDT",
+    "SOLUSDT",
+    "DOTUSDT",
+    "DOGEUSDT",
+    "AVAXUSDT",
+    "LTCUSDT",
+    "LINKUSDT",
+    "XRPUSDT",
+    "MATICUSDT",
+    "UNIUSDT",
+    "ALGOUSDT",
+    "VETUSDT"
+  ],
+  "refresh_interval_seconds": 3
+}

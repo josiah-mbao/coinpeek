@@ -5,6 +5,13 @@ use yew::prelude::*;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use serde::{Deserialize, Serialize};
+use gloo::timers::callback::Interval;
+
+// WASM-JS interop for chart updates
+#[wasm_bindgen]
+extern "C" {
+    fn updateCoinPeekChart(data: &str);
+}
 
 // Web-specific storage utilities
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -27,6 +34,7 @@ impl Default for CoinPeekStorage {
 pub struct WebApp {
     app: App,
     storage: CoinPeekStorage,
+    _price_refresh_timer: Option<Interval>,
 }
 
 #[derive(Clone, Debug)]
@@ -86,7 +94,7 @@ pub enum WebMsg {
     LoadCandles(String, TimeFrame),
     UpdateCandles(Vec<Candle>),
     ChangeTimeFrame(TimeFrame),
-    WebSocketUpdate(crate::binance::WebSocketPriceUpdate),
+    WebSocketUpdate(crate::binance::IndividualTickerUpdate),
     ConnectWebSocket,
     DisconnectWebSocket,
 }
@@ -95,7 +103,7 @@ impl Component for WebApp {
     type Message = WebMsg;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         let mut app = App::new(Config::default());
         let storage = Self::load_from_local_storage().unwrap_or_default();
 
@@ -104,7 +112,13 @@ impl Component for WebApp {
             app.update_prices(storage.price_data.clone());
         }
 
-        Self { app, storage }
+        // Set up automatic price refresh timer (every 10 seconds)
+        let link = ctx.link().clone();
+        let price_refresh_timer = Some(Interval::new(10_000, move || {
+            link.send_message(WebMsg::RefreshData);
+        }));
+
+        Self { app, storage, _price_refresh_timer: price_refresh_timer }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -216,7 +230,7 @@ impl Component for WebApp {
             }
             WebMsg::WebSocketUpdate(update) => {
                 // Update price data from WebSocket
-                let price_info = crate::binance::websocket_data_to_price_info(&update.data);
+                let price_info = crate::binance::websocket_data_to_price_info(&update);
                 self.app.update_prices(vec![price_info]);
                 true
             }
@@ -237,7 +251,7 @@ impl Component for WebApp {
 
                 let link = ctx.link().clone();
                 ctx.link().send_future(async move {
-                    let on_message = move |update: crate::binance::WebSocketPriceUpdate| {
+                    let on_message = move |update: crate::binance::IndividualTickerUpdate| {
                         link.send_message(WebMsg::WebSocketUpdate(update));
                     };
 
@@ -429,13 +443,70 @@ impl WebApp {
     }
 
     fn update_chart(candles: &[Candle]) {
-        // Simple approach: just log the data for now
-        // In a production app, we'd use proper JS interop
-        console::log_1(&format!("Chart update called with {} candles", candles.len()).into());
+        console::log_1(&format!("Rust update_chart called with {} candles", candles.len()).into());
 
-        // For demo purposes, we'll skip the actual chart update for now
-        // The chart will be initialized but not dynamically updated
-        // In a full implementation, we'd use wasm-bindgen to properly call JS functions
+        if candles.is_empty() {
+            console::log_1(&"No candle data to update chart".into());
+            return;
+        }
+
+        // First ensure chart is initialized
+        Self::ensure_chart_initialized();
+
+        // Convert candle data to format expected by Lightweight Charts
+        #[derive(serde::Serialize)]
+        struct ChartDataPoint {
+            time: u64,
+            open: f64,
+            high: f64,
+            low: f64,
+            close: f64,
+        }
+
+        let chart_data: Vec<ChartDataPoint> = candles
+            .iter()
+            .map(|candle| ChartDataPoint {
+                time: candle.timestamp / 1000, // Convert ms to seconds for Lightweight Charts
+                open: candle.open,
+                high: candle.high,
+                low: candle.low,
+                close: candle.close,
+            })
+            .collect();
+
+        console::log_1(&format!("Converted {} candles to chart format", chart_data.len()).into());
+
+        // Serialize to JSON
+        match serde_json::to_string(&chart_data) {
+            Ok(json_data) => {
+                console::log_1(&format!("Serialized to JSON, length: {}", json_data.len()).into());
+                console::log_1(&format!("JSON preview: {}", &json_data[..json_data.len().min(200)]).into());
+                updateCoinPeekChart(&json_data);
+                console::log_1(&"Called updateCoinPeekChart".into());
+            }
+            Err(e) => {
+                console::log_1(&format!("Failed to serialize chart data: {:?}", e).into());
+            }
+        }
+    }
+
+    fn ensure_chart_initialized() {
+        console::log_1(&"Ensuring chart is initialized".into());
+
+        // Call the JS initChart function if chart container exists
+        // This is done via a small JS snippet injected through web_sys
+        if let Some(window) = web_sys::window() {
+            if let Some(document) = window.document() {
+                if document.get_element_by_id("chart-container").is_some() {
+                    console::log_1(&"Chart container found, initializing chart".into());
+                    // The chart should be initialized by the existing initChart function
+                    // But since it runs on DOMContentLoaded, we need to call it manually
+                    let _ = js_sys::eval("if (typeof initChart === 'function') { initChart(); console.log('Chart initialized from Rust'); } else { console.error('initChart function not found'); }");
+                } else {
+                    console::log_1(&"Chart container not found yet".into());
+                }
+            }
+        }
     }
 }
 

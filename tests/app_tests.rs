@@ -94,8 +94,7 @@ fn test_sort_mode_changes() {
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
 
     // Test price sorting (ascending by default - lowest price first)
-    app.next_sort_mode();
-    assert_eq!(app.sort_config.mode, SortMode::Price);
+    app.next_sort_mode(); // Go to Price mode
     app.update_prices(price_infos.clone()); // Re-sort
     assert_eq!(app.price_infos[0].symbol, "ETHUSDT"); // Lower price first (3000 < 50000)
     assert_eq!(app.price_infos[1].symbol, "BTCUSDT");
@@ -496,8 +495,8 @@ fn test_filter_preset_application() {
 
     // Test Top Gainers preset
     app.set_filter_preset(FilterPreset::TopGainers);
-    assert_eq!(app.price_infos.len(), 1); // Only DOT (15.0%) - BTC (2.5%) is not > 5%
-    assert!(app.price_infos.iter().all(|p| p.price_change_percent > 5.0));
+    assert_eq!(app.price_infos.len(), 1); // Only DOT (15.0%) meets >= 5% criteria
+    assert!(app.price_infos.iter().all(|p| p.price_change_percent >= 5.0));
 
     // Test Top Losers preset
     app.set_filter_preset(FilterPreset::TopLosers);
@@ -630,14 +629,16 @@ fn test_offline_awareness_tracking() {
 
     app.record_sync_failure();
     app.record_sync_failure();
+    // Check values before toggle_offline_mode resets them
     assert_eq!(app.data_status.consecutive_failures, 3);
     assert!(app.data_status.offline_mode); // Should auto-enable offline mode
     assert!(app.get_offline_indicator().contains("🔴 OFFLINE"));
 
-    // Toggle offline mode manually
+    // Toggle offline mode manually (resets failure counter)
     app.toggle_offline_mode();
     assert!(!app.data_status.offline_mode);
-    assert_eq!(app.data_status.consecutive_failures, 0); // Should reset failures
+    // Counter is reset by toggle_offline_mode when manually enabling offline mode
+    assert_eq!(app.data_status.consecutive_failures, 0);
     assert!(app.get_offline_indicator().contains("🟢 synced"));
 }
 

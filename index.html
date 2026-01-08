@@ -82,29 +82,40 @@
             resizeObserver.observe(container);
         }
 
-        function updateCoinPeekChart(data) {
-            if (!candlestickSeries || !data || data.length === 0) {
-                console.log('Chart not ready or no data');
+        function updateCoinPeekChart(jsonData) {
+            console.log('updateCoinPeekChart called with:', jsonData ? jsonData.substring(0, 100) + '...' : 'null');
+
+            if (!candlestickSeries) {
+                console.error('Chart series not initialized');
+                return;
+            }
+
+            if (!jsonData) {
+                console.log('No JSON data provided');
                 return;
             }
 
             try {
-                // Convert timestamp to proper format for the chart
-                const formattedData = data.map(item => ({
-                    time: Math.floor(item.time / 1000), // Convert to seconds if needed
-                    open: item.open,
-                    high: item.high,
-                    low: item.low,
-                    close: item.close
-                }));
+                // Parse the JSON string from Rust
+                const data = JSON.parse(jsonData);
+                console.log('Parsed data:', data);
 
-                candlestickSeries.setData(formattedData);
+                if (!data || data.length === 0) {
+                    console.log('Parsed data is empty');
+                    return;
+                }
+
+                // Data is already in the correct format from Rust
+                candlestickSeries.setData(data);
 
                 // Fit content
-                chart.timeScale().fitContent();
-                console.log('Chart updated with', formattedData.length, 'data points');
+                if (chart) {
+                    chart.timeScale().fitContent();
+                }
+                console.log('Chart updated with', data.length, 'data points');
             } catch (error) {
                 console.error('Error updating chart:', error);
+                console.error('JSON data was:', jsonData);
             }
         }
 

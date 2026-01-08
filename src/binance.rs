@@ -38,6 +38,9 @@ pub struct WebSocketPriceUpdate {
     pub data: PriceData,
 }
 
+// For individual ticker streams, the message is directly the PriceData
+pub type IndividualTickerUpdate = PriceData;
+
 #[derive(Debug, Deserialize)]
 pub struct PriceData {
     pub e: String, // Event type
@@ -301,7 +304,7 @@ pub async fn fetch_candles(symbol: &str, interval: &str, limit: u8) -> Result<Ve
 #[cfg(target_arch = "wasm32")]
 pub fn create_price_websocket<F>(symbols: Vec<String>, on_message: F) -> Result<(), Box<dyn std::error::Error>>
 where
-    F: Fn(WebSocketPriceUpdate) + 'static,
+    F: Fn(IndividualTickerUpdate) + 'static,
 {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen::JsCast;
@@ -332,12 +335,14 @@ where
         let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
             if let Ok(text) = e.data().dyn_into::<js_sys::JsString>() {
                 let text_str = String::from(text);
-                if let Ok(update) = serde_json::from_str::<WebSocketPriceUpdate>(&text_str) {
+
+                // Try parsing as IndividualTickerUpdate (direct PriceData) first
+                if let Ok(update) = serde_json::from_str::<IndividualTickerUpdate>(&text_str) {
                     if let Some(ref callback) = *on_message.borrow() {
                         callback(update);
                     }
                 } else {
-                    web_sys::console::log_1(&format!("Failed to parse WebSocket message: {}", text_str).into());
+                    web_sys::console::log_1(&format!("Failed to parse WebSocket message as IndividualTickerUpdate: {}", text_str).into());
                 }
             }
         }) as Box<dyn FnMut(MessageEvent)>);

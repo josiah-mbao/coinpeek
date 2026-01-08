@@ -267,10 +267,10 @@ impl App {
             }
             FilterPreset::HighVolume => {
                 if !price_infos.is_empty() {
-                    // Keep top 20% by volume
+                    // Keep top 40% by volume
                     let mut sorted_by_volume = price_infos.clone();
                     sorted_by_volume.sort_by(|a, b| b.volume.partial_cmp(&a.volume).unwrap());
-                    let top_count = (sorted_by_volume.len() as f64 * 0.2).ceil() as usize;
+                    let top_count = (sorted_by_volume.len() as f64 * 0.4).ceil() as usize;
                     let min_volume = sorted_by_volume.get(top_count.saturating_sub(1))
                         .map(|p| p.volume)
                         .unwrap_or(0.0);
@@ -556,8 +556,8 @@ impl App {
 
     pub fn toggle_offline_mode(&mut self) {
         self.data_status.offline_mode = !self.data_status.offline_mode;
-        if self.data_status.offline_mode {
-            self.data_status.consecutive_failures = 0; // Reset failure count when manually enabling offline mode
+        if !self.data_status.offline_mode {
+            self.data_status.consecutive_failures = 0; // Reset failure count when disabling offline mode
         }
     }
 
