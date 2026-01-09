@@ -10,6 +10,7 @@ pub struct PriceResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct Ticker24hrResponse {
     pub symbol: String,
     pub priceChange: String,
@@ -42,6 +43,7 @@ pub struct WebSocketPriceUpdate {
 pub type IndividualTickerUpdate = PriceData;
 
 #[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct PriceData {
     pub e: String, // Event type
     pub E: u64,    // Event time
@@ -100,9 +102,31 @@ type Error = gloo::net::Error;
 #[cfg(not(target_arch = "wasm32"))]
 type Error = ReqwestError;
 
+/// Validate that a symbol is safe for API calls
+pub fn validate_symbol_for_api(symbol: &str) -> Result<(), String> {
+    // Only allow uppercase letters and specific lengths
+    if symbol.len() < 6 || symbol.len() > 14 {
+        return Err("Symbol length must be 6-14 characters".to_string());
+    }
+
+    if !symbol.chars().all(|c| c.is_ascii_uppercase()) {
+        return Err("Symbol must contain only uppercase ASCII letters".to_string());
+    }
+
+    // Prevent obvious injection attempts
+    if symbol.contains("HTTP") || symbol.contains("://") || symbol.contains("<") || symbol.contains(">") {
+        return Err("Symbol contains invalid characters".to_string());
+    }
+
+    Ok(())
+}
+
 /// Fetches the price of a single crypto symbol from Binance API
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn fetch_price(symbol: &str) -> Result<f64, Error> {
+pub async fn fetch_price(symbol: &str) -> Result<f64, Box<dyn std::error::Error>> {
+    // Validate symbol before making API call
+    validate_symbol_for_api(symbol)?;
+
     let url = format!(
         "https://api.binance.com/api/v3/ticker/price?symbol={}",
         symbol
