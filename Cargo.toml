@@ -16,8 +16,8 @@ env_logger = "0.11"
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.0"
-# Optional native dependencies
-rusqlite = { version = "0.32", features = ["bundled", "chrono"], optional = true }
+# Native dependencies (for terminal app)
+rusqlite = { version = "0.32", features = ["bundled", "chrono"], default-features = false, optional = true }
 tokio-rusqlite = { version = "0.6", optional = true }
 ratatui = { version = "0.29", optional = true }
 crossterm = { version = "0.27", optional = true }
@@ -52,8 +52,9 @@ gloo-net = { version = "0.4", optional = true }
 wasm-logger = "0.2"
 
 [features]
-default = ["rusqlite", "tokio-rusqlite", "ratatui", "crossterm"]
-wasm = ["gloo-net", "yew-router"]
+default = ["native"]
+native = ["rusqlite", "tokio-rusqlite", "ratatui", "crossterm"]
+wasm = ["gloo-net", "yew-router", "reqwest/json", "reqwest/gzip", "reqwest/stream"]
 
 [dev-dependencies]
 tokio-test = "0.4"
