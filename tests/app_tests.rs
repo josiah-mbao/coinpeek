@@ -93,8 +93,9 @@ fn test_sort_mode_changes() {
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT");
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
 
-    // Test price sorting (ascending by default - lowest price first)
+    // Test price sorting (descending for highest price first)
     app.next_sort_mode(); // Go to Price mode
+    app.sort_config.direction = SortDirection::Descending;
     app.update_prices(price_infos.clone()); // Re-sort
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT"); // Higher price first
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
@@ -102,6 +103,7 @@ fn test_sort_mode_changes() {
     // Test change percent sorting (highest change percent first)
     app.next_sort_mode();
     assert_eq!(app.sort_config.mode, SortMode::ChangePercent);
+    app.sort_config.direction = SortDirection::Descending;
     app.update_prices(price_infos.clone());
     assert_eq!(app.price_infos[0].symbol, "BTCUSDT"); // Higher change percent first (+2.5% > -1.2%)
     assert_eq!(app.price_infos[1].symbol, "ETHUSDT");
