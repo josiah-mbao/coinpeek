@@ -1,0 +1,15 @@
+{
+  "name": "coinpeek",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "coinpeek_bg.wasm",
+    "coinpeek.js",
+    "coinpeek.d.ts"
+  ],
+  "main": "coinpeek.js",
+  "types": "coinpeek.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
