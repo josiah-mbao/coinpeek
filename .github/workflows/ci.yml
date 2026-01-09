@@ -96,6 +96,10 @@ jobs:
         uses: jetli/wasm-pack-action@v0.4.0
       - name: Build web app
         run: wasm-pack build --target web -- --features wasm
+      - name: Copy web assets
+        run: |
+          cp index.html pkg/
+          cp styles.css pkg/
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
