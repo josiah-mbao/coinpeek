@@ -45,7 +45,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --features native
       - name: Create artifact
         run: |
           if [ "${{ matrix.target }}" = "x86_64-pc-windows-msvc" ]; then
