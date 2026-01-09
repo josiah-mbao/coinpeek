@@ -285,6 +285,7 @@ dependencies = [
  "log",
  "mockito",
  "ratatui",
+ "regex",
  "reqwest",
  "rusqlite",
  "serde",
