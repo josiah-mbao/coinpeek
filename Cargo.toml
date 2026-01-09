@@ -13,15 +13,19 @@ serde_json = "1.0"
 reqwest = { version = "0.11", features = ["json", "gzip", "stream"] }
 # WASM-compatible HTTP client
 gloo-net = { version = "0.4", optional = true }
-ratatui = { version = "0.29" }
-crossterm = { version = "0.27" }
+ratatui = { version = "0.29", optional = true }
+crossterm = { version = "0.27", optional = true }
 log = "0.4"
 env_logger = "0.11"
 futures = "0.3"
-rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+rusqlite = { version = "0.32", features = ["bundled", "chrono"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
-tokio-rusqlite = { version = "0.6" }
+tokio-rusqlite = { version = "0.6", optional = true }
 regex = "1.0"
+
+[features]
+default = ["rusqlite", "tokio-rusqlite", "ratatui", "crossterm"]
+wasm = ["rusqlite?/bundled", "gloo-net", "yew/wasm"]
 
 # WebAssembly dependencies
 wasm-bindgen = "0.2"
